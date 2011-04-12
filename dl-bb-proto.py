@@ -40,7 +40,7 @@ def main():
                     user_url = div.a["href"]
                     username = user_url.rsplit("/", 1)[1]
                 elif first.startswith("Date Taken:"):
-                    date = datetime.datetime.strptime(first, "Date Taken: %b %m, %Y").date()
+                    date = datetime.datetime.strptime(first, "Date Taken: %b %d, %Y").date()
         print "photo_url = ", photo_url
         print "thumb_url = ", thumb_url
         print "user_url = ", user_url
