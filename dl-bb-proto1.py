@@ -1,11 +1,13 @@
 import datetime
 import re
 import urllib
+import urlparse
 
 from BeautifulSoup import BeautifulSoup, NavigableString, Tag
 import httplib2
 
 FIELD_RX = re.compile("^[A-Za-z ]+:")
+bodyspace_url = "http://bodyspace.bodybuilding.com/"
 
 def get_page():
     h = httplib2.Http()
@@ -18,7 +20,7 @@ def get_page():
 
 def main():
     #page = get_page()
-    f = open("page1.html")
+    f = open("pages/page-001.html")
     html = f.read()
     f.close()
     soup = BeautifulSoup(html)
@@ -30,7 +32,7 @@ def main():
         print "Node #{0}.".format(i)
         top = node.find("div", "top")
         middle = node.find("div", "middle")
-        photo_url = top.a["href"]
+        photo_url = urlparse.urljoin(bodyspace_url, top.a["href"])
         thumb_url = top.img["src"]
         user_url = username = date = None
         for div in middle.findAll("div"):
