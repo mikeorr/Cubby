@@ -13,7 +13,7 @@ import urllib
 import urlparse
 
 from BeautifulSoup import BeautifulSoup, NavigableString, Tag
-import httplib2
+import httplib
 
 DEFAULT_DOWNLOAD_PAGE_COUNT = 100
 LATEST_PICTURES_PAGES = 100
@@ -93,7 +93,6 @@ def parse_files(record_dir):
             count += 1
             thumbnails.append(th)
             print "Node #{0}".format(count)
-    print thumbnails[0]
     print len(thumbnails), "thumbnails."
     print "Finished in {0:0.4f} seconds.".format(t.total())
     return thumbnails
@@ -128,8 +127,36 @@ def download_indexes(record_dir, nr_pages):
     print msg.format(nr_pages, t.total())
     return nodes
 
-def write_output(info, output_file):
-    pass
+
+NODE_TEMPLATE = """\
+<div class="entry">
+    <div><a href="{0}"><img src="{1}" width="{2}" height="{3}" /></a></div>
+    <div><a href="{4}">{5}</a></div>
+"""
+
+def write_output(nodes, output_file):
+    cell_fmt = '<td>{0}</td>\n'.format(NODE_TEMPLATE)
+    thumb_size = 150
+    columns = 11
+    f = open(output_file, "w")
+    f.write('<!DOCTYPE html>\n<head>\n')
+    f.write('<style>table {} td {border: solid 1px;}</style>\n')
+    f.write('</head><body><table>\n')
+    columns_range = range(columns)
+    for i in range(0, len(nodes), columns):
+        f.write('<tr>\n')
+        for j in columns_range:
+            try:
+                node = nodes[i+j]
+            except IndexError:
+                pass
+            else:
+                cell = cell_fmt.format(node.photo_url, node.thumb_url,
+                    thumb_size, thumb_size, node.user_url, node.username)
+                f.write(cell)
+        f.write('</tr>\n')
+    f.write('</table></body></html>\n')
+    f.close()
 
 def main():
     parser = get_parser()
