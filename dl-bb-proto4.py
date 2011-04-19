@@ -1,61 +1,9 @@
 """Fetch 100 pages using httplib2."""
 
-# Based on an eventlet recipe: 
-# http://eventlet.wordpress.com/page/2/
-# Actually not, I couldn't get it to work.
+# Notes for future:
+# Eventlet usage: http://eventlet.wordpress.com/page/2/
 
 import argparse
-import os
-import re
-import time
-import urllib
-
-import httplib2
-
-LATEST_PICTURES_PAGES = 100
-
-def get_parser():
-    parser = argparse.ArgumentParser()
-    paa = parser.add_argument
-    paa("n", action="store", dest="pages", type=int,
-        help="Number of pages to fetch.")
-    paa("w", action="store", dest="write",
-        help="Write pages to the specified directory.")
-    paa("r", action="store", dest="read",
-        help="Read pages from the specified directory. (Disables downloading.)")
-    paa("output", action="store", 
-        help="Output file (HTML).")
-    return parser
-
-def main():
-    http = httplib2.Http()
-    url = "http://bodyspace.bodybuilding.com/photos/view-latest/all"
-    dst_dir = "pages"
-    if not os.path.exists(dst_dir):
-        os.path.makedirs(dest_dir)
-    begin = time.time()
-    for i in xrange(LATEST_PICTURES_PAGES):
-        page = i + 1
-        start = 19 * i
-        qs = urllib.urlencode({"start": start})
-        u = "{0}?{1}".format(url, qs)
-        page_begin = time.time()
-        headers, content = http.request(u)
-        elapsed = time.time() - page_begin
-        print "... page {0} ({1:0.4f} seconds)".format(page, elapsed)
-        filename = "page-{0:03}.html".format(page)
-        p = os.path.join(dst_dir, filename)
-        f = open(p, "w")
-        f.write(content)
-        f.close()
-    elapsed = time.time() - begin
-    msg = "Finished {0} pages in {1:0.4f} seconds"
-    print msg.format(LATEST_PICTURES_PAGES, elapsed)
-
-if __name__ == "__main__":  main()
-
-# 3
-
 import collections
 import datetime
 import os
@@ -65,12 +13,51 @@ import urllib
 import urlparse
 
 from BeautifulSoup import BeautifulSoup, NavigableString, Tag
+import httplib2
 
+DEFAULT_DOWNLOAD_PAGE_COUNT = 100
+LATEST_PICTURES_PAGES = 100
 FIELD_RX = re.compile("^[A-Za-z ]+:")
 bodyspace_url = "http://bodyspace.bodybuilding.com/"
 
+class Timer(object):
+    def __init__(self):
+        self.reset()
+
+    def checkpoint(self):
+        now = time.time()
+        elapsed = now - self.start
+        self.start = now
+        return elapsed
+
+    def total(self):
+        now = time.time()
+        elapsed = now - self.total_start
+        return elapsed
+
+    def reset(self):
+        now = time.time()
+        self.total_start = now
+        self.start = now
+        
+
 Thumbnail = collections.namedtuple("Thumbnail", 
     ["photo_url", "thumb_url", "user_url", "username", "date"])
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    paa = parser.add_argument
+    paa("-n", action="store", dest="nr_pages", type=int,
+        default=DEFAULT_DOWNLOAD_PAGE_COUNT, 
+        help="Number of pages to fetch. (Default {0}.)".format(
+            DEFAULT_DOWNLOAD_PAGE_COUNT))
+    paa("-w", action="store", dest="write",
+        help="Write pages to the specified directory.")
+    paa("-r", action="store", dest="read",
+        help="Read pages from the specified directory. (Disables downloading.)")
+    paa("output", action="store", 
+        help="Output file (HTML).")
+    return parser
 
 def iter_nodes(html):
     soup = BeautifulSoup(html)
@@ -87,18 +74,18 @@ def iter_nodes(html):
                     user_url = div.a["href"]
                     username = user_url.rsplit("/", 1)[1]
                 elif first.startswith("Date Taken:"):
-                    date = datetime.datetime.strptime(first, "Date Taken: %b %d, %Y").date()
+                    fmt = "Date Taken: %b %d, %Y"
+                    date = datetime.datetime.strptime(first, fmt).date()
         thumbnail = Thumbnail(photo_url=photo_url, thumb_url=thumb_url, 
             user_url=user_url, username=username, date=date)
         yield thumbnail
 
-def main():
-    pages_dir = "pages"
+def parse_files(record_dir):
     thumbnails = []
     count = 0
-    start = time.time()
-    for filename in os.listdir(pages_dir):
-        p = os.path.join(pages_dir, filename)
+    t = Timer()
+    for filename in os.listdir(record_dir):
+        p = os.path.join(record_dir, filename)
         f = open(p)
         html = f.read()
         f.close()
@@ -106,16 +93,40 @@ def main():
             count += 1
             thumbnails.append(th)
             print "Node #{0}".format(count)
-    elapsed = time.time() - start
     print thumbnails[0]
     print len(thumbnails), "thumbnails."
-    print "Finished in {0:0.4f} seconds.".format(elapsed)
+    print "Finished in {0:0.4f} seconds.".format(t.total())
+    return thumbnails
 
-def parse_files(record_dir):
-    return None
-
-def download_indexes(record_dir):
-    return None
+def download_indexes(record_dir, nr_pages):
+    http = httplib2.Http()
+    url = "http://bodyspace.bodybuilding.com/photos/view-latest/all"
+    dst_dir = "pages"
+    if record_dir and not os.path.exists(record_dir):
+        os.makedirs(record_dir)
+    nodes = []
+    t = Timer()
+    for i in xrange(nr_pages):
+        page = i + 1
+        start = 19 * i
+        qs = urllib.urlencode({"start": start})
+        u = "{0}?{1}".format(url, qs)
+        t.checkpoint()  # Ignore any intervening time.
+        headers, content = http.request(u)
+        download_time = t.checkpoint()
+        nodes.extend(iter_nodes(content))
+        parse_time = t.checkpoint()
+        if record_dir:
+            filename = "page-{0:03}.html".format(page)
+            p = os.path.join(record_dir, filename)
+            f = open(p, "w")
+            f.write(content)
+            f.close()
+        msg = "... page {0} ({1:0.4f} seconds to download, {2:0.4f} to parse))"
+        print msg.format(page, download_time, parse_time)
+    msg = "Finished {0} pages in {1:0.4f} seconds"
+    print msg.format(nr_pages, t.total())
+    return nodes
 
 def write_output(info, output_file):
     pass
@@ -126,7 +137,7 @@ def main():
     if args.read:
         info = parse_files(args.read)
     else:
-        info = download_indexes(args.write)
+        info = download_indexes(args.write, args.nr_pages)
     write_output(info, args.output)
         
 if __name__ == "__main__":  main()
