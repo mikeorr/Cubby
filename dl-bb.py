@@ -16,6 +16,7 @@ import urlparse
 
 from BeautifulSoup import BeautifulSoup, NavigableString, Tag
 import httplib2
+import lxml.html
 
 DOWNLOAD_PAGE_COUNT = 50
 COLUMNS = 9
@@ -79,7 +80,7 @@ def get_url(http, url, **params):
     logging.debug("Requesting URL '%s'", url)
     return http.request(url)[1]
 
-def parse_nodes(html):
+def parse_nodes_beautifulsoup(html):
     ret = []
     soup = BeautifulSoup(html)
     for node in soup.findAll("div", "boom-three-column"):
@@ -101,6 +102,30 @@ def parse_nodes(html):
             user_url=user_url, username=username, date=date)
         ret.append(thumbnail)
     return ret
+
+def parse_nodes_lxml(html):
+    ret = []
+    tree = lxml.html.document_fromstring(html)
+    for container in tree.find_class("boom-three-column"):
+        top = container.find_class("top")[0]
+        middle = container.find_class("middle")[0]
+        photo_url = urlparse.urljoin(BB_URL, top.find("a").get("href"))
+        thumb_url = top.getiterator("img").next().get("src")
+        user_url = username = date = None
+        for div in middle.findall("div"):
+            text = div.text or ""
+            if text.startswith("User:"):
+                user_url = div.find("a").get("href")
+                username = user_url.rsplit("/", 1)[1]
+            elif text.startswith("Date Taken:"):
+                fmt = "Date taken: %b %d, %Y"
+                date = datetime.datetime.strptime(text, fmt).date()
+        thumbnail = Thumbnail(photo_url=photo_url, thumb_url=thumb_url, 
+            user_url=user_url, username=username, date=date)
+        ret.append(thumbnail)
+    return ret
+
+parse_nodes = parse_nodes_lxml
 
 def read_page_from_stdin():
     html = sys.stdin.read()
