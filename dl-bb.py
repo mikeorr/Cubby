@@ -63,13 +63,15 @@ def get_parser():
         help="Read page from standard input instead of downloading.")
     paa("-o", action="store", dest="output",
         help="Output file (default '{0}').".format(OUTPUT_FILE))
-    paa("-c", action="store", dest="columns",
+    paa("-c", action="store", dest="columns", type=int,
         help="Number of thumbnail columns on output (default {0}).".format(
             COLUMNS))
+    paa("-s", action="store", dest="start_page", type=int,
+        help="Start downloading at Nth page. (Default 1.)")
     paa("--debug", action="store_true",
         help="Enable debug logging.")
     parser.set_defaults(nr_pages=DOWNLOAD_PAGE_COUNT, output=OUTPUT_FILE,
-        columns=COLUMNS)
+        columns=COLUMNS, start_page=1)
     return parser
 
 def get_url(http, url, **params):
@@ -141,13 +143,16 @@ def download_to_stdout():
     logging.info("Downloaded 1 page in %0.4f seconds.", t.total())
     sys.stdout.write(content)
 
-def download_indexes(nr_pages):
-    logging.info("Downloading %d pages.", nr_pages)
+def download_indexes(nr_pages, start_page):
+    if start_page == 1:
+        logging.info("Downloading %d pages.", nr_pages)
+    else:
+        logging.info("Downloading %d pages starting at %d.", nr_pages, start_page)
     http = httplib2.Http()
     dst_dir = "pages"
     pages_of_nodes = []
     t = Timer()
-    for i in xrange(nr_pages):
+    for i in xrange(start_page, start_page + nr_pages):
         page = i + 1
         t.checkpoint()  # Ignore any intervening time.
         if page == 1:
@@ -172,7 +177,7 @@ NODE_TEMPLATE = """\
     <div><a href="{4}">{5}</a></div>
 """
 
-def write_output(pages_of_nodes, output_file, columns):
+def write_output(pages_of_nodes, output_file, columns, start_page):
     cell_fmt = '<td>{0}</td>\n'.format(NODE_TEMPLATE)
     thumb_size = 150
     columns_range = range(columns)
@@ -188,7 +193,7 @@ def write_output(pages_of_nodes, output_file, columns):
 </head><body><table>
 """)
     for page_i, nodes in enumerate(pages_of_nodes):
-        page = page_i + 1
+        page = page_i + start_page
         if not nodes:
             logging.warn("page %s has no pictures", page)
             continue
@@ -226,7 +231,7 @@ def main():
     if args.read:
         pages_of_nodes = [read_page_from_stdin()]
     else:
-        pages_of_nodes = download_indexes(args.nr_pages)
-    write_output(pages_of_nodes, args.output, args.columns)
+        pages_of_nodes = download_indexes(args.nr_pages, args.start_page)
+    write_output(pages_of_nodes, args.output, args.columns, args.start_page)
         
 if __name__ == "__main__":  main()
