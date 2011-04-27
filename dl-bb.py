@@ -152,13 +152,13 @@ def download_indexes(nr_pages, start_page):
     dst_dir = "pages"
     pages_of_nodes = []
     t = Timer()
-    for i in xrange(start_page, start_page + nr_pages):
+    for i in range(nr_pages):
         page = i + 1
+        start = (start_page + i - 1) * PICTURES_PER_PAGE + 1
         t.checkpoint()  # Ignore any intervening time.
-        if page == 1:
+        if start == 1:
             content = get_url(http, PICTURES_URL)
         else:
-            start = (i * PICTURES_PER_PAGE) + 1
             content = get_url(http, PICTURES_URL, start=start)
         download_time = t.checkpoint()
         nodes = parse_nodes(content)
