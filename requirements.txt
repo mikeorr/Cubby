@@ -1,4 +1,2 @@
-Mako
-WebHelpers
 BeautifulSoup
 httplib2
