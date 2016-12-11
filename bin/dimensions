@@ -1,0 +1,40 @@
+#! /usr/bin/python2
+"""dimensions -- Display the height and width of graphics files.
+
+By Mike Orr <mso@mso.oz.net>, 14-Jul-1999.  Public domain.
+Requires the Python Imaging Library (the python-pil Debian package).
+"""
+import sys
+try:
+    # Avoid AttributeError caused by version skew when use Image.open().
+    sys.path.remove('/local/zope/lib/python')
+except ValueError:
+    pass
+import PIL.Image # Requires the Python Imaging Library.
+
+USAGE = """\
+Usage:  dimensions filename [...]
+  Print the height and width of graphics files.
+"""
+
+def dim(filename):
+	try:
+		im = PIL.Image.open(filename)
+		x, y = im.size
+		print "%s:  %d x %d" % (filename, x, y)
+	except IOError:
+		errmsg = str( sys.exc_info()[1] )
+		print "%s:  IOError, %s" % (filename,  errmsg)
+	except:
+		exc, value = sys.exc_info()[:2]
+		exc, value = str(exc), str(value)
+		print "%s: %s: %s" % (filename, exc, value)
+
+def main():
+	if len(sys.argv) < 2:
+		sys.stderr.write(USAGE)
+		sys.exit(1)
+	for file in sys.argv[1:]:
+		dim(file)
+
+if __name__ == "__main__":  main()

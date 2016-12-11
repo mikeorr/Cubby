@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [[ $1 == '--help' ]] ;then
+    echo "Usage: $(basename $0) [-n]"
+    echo
+    echo "List all active network daemons (i.e., sockets open for listening)"
+    echo
+    echo "All command-line args are passed to 'netstat'. In particular:"
+    echo "  -n : display numeric IPs and ports, on't resolve domain names"
+    echo "  --tcp : show only TCP sockets (not UDP)"
+    exit 0
+fi
+
+netstat -a --inet $@  |  egrep 'LISTEN|udp|^Active|^Proto'

@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+"""nimages"""
+import optparse, os, shutil, sys
+from path import path
+
+OUTFILE = "zz.html"
+OUTDIR = "x"
+pardir = path(os.pardir)
+
+def paths(days, is_min):
+    cmd = "find %s -%s -type f | egrep -v '\.(xvpics|html|txt)' | egrep -v '(messages|text|contact)' | sed 's/^\.\///' | sort"
+    tup = is_min and "-mmin" or "-mtime", days
+    cmd = cmd % tup
+    return os.popen(cmd)
+
+def empty_directory(dir):
+    dir = path(dir)
+    if dir.exists():
+        dir.rmtree()
+    dir.mkdir()
+
+def html(days, is_min):
+    out = file(OUTFILE, 'w')
+    f = paths(days, is_min)
+    for lin in f:
+        print >>out, '<IMG SRC="%s">' % lin.rstrip()
+    f.close()
+    out.close()
+    print "Placed output in", OUTFILE
+
+def links(days, is_min):
+    outdir = path(OUTDIR)
+    empty_directory(outdir)
+    count = 0
+    f = paths(days, is_min)
+    for lin in f:
+        count += 1
+        p = path(lin.rstrip())
+        print p
+        #newlink = outdir / p.basename()
+        linkto = pardir / p
+        base = p.namebase
+        while True:
+            try:
+                newlink = outdir / (base + p.ext)
+                linkto.symlink(newlink)
+                break
+            except OSError, e:
+                if "File exists" in str(e):
+                    base += "_"
+    print count, "images."
+    
+def main():
+    parser = optparse.OptionParser()
+    pao = parser.add_option
+    pao("--html", action="store_true", dest="html")
+    pao("--min", "-m", action="store_true")
+    opts, args = parser.parse_args()
+    days = len(args) and args[0] or "1"
+    if opts.html:
+        html(days, opts.min)
+    else:
+        links(days, opts.min)
+        
+
+if __name__ == "__main__":
+    main()
+
+# vim: sw=4 ts=4 expandtab ai

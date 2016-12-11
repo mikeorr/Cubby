@@ -1,0 +1,3 @@
+#!/bin/bash
+
+find $* -type f |  egrep -v '\.svn|\.hg|\.git|\.pyc| ' | xargs ls -ltr |  tail -n 10

@@ -1,0 +1,3 @@
+#!/bin/bash
+find $* -name \*.pyc -delete
+find $* -name __pycache__ -execdir rm -r '{}' ';'
