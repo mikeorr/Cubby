@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """nimages"""
 import optparse, os, shutil, sys
 from path import path
@@ -14,10 +14,15 @@ def paths(days, is_min):
     return os.popen(cmd)
 
 def empty_directory(dir):
-    dir = path(dir)
-    if dir.exists():
-        dir.rmtree()
-    dir.mkdir()
+    if os.path.exists(dir):
+        for file in os.listdir(dir):
+            p = os.path.join(dir, file)
+            if os.path.isdir(p) and not os.path.islink(p):
+                shutil.rmtree(p)
+            else:
+                os.remove(p)
+    else:
+        os.mkdir(dir)
 
 def html(days, is_min):
     out = file(OUTFILE, 'w')
@@ -29,8 +34,8 @@ def html(days, is_min):
     print "Placed output in", OUTFILE
 
 def links(days, is_min):
+    empty_directory(OUTDIR)
     outdir = path(OUTDIR)
-    empty_directory(outdir)
     count = 0
     f = paths(days, is_min)
     for lin in f:
