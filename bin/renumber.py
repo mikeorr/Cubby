@@ -21,7 +21,10 @@ def get_parser():
 def main():
     parser = get_parser()
     opts = parser.parse_args()
-    pattern = opts.prefix + "*"
+    if opts.prefix:
+        pattern = opts.prefix + "*"
+    else:
+        pattern = "*"
     filenames = os.listdir(opts.directory)
     filenames = fnmatch.filter(filenames, pattern)
     filenames.sort()
@@ -35,25 +38,19 @@ def main():
         ext2 = ext.lower()
         ext2 = EXTENSION_RENAMES.get(ext2, ext2)
         m = FILE_RX.match(stem)
-        unique = False
         if m:
-            while not unique:
+            while True:
                     prefix = m.group(1)
                     number = int(m.group(2), 10)
                     suffix = m.group(3) or ""
-                    if number < seq:
-                        number = seq
+                    if number == seq:
+                        break
+                    number = seq
+                    seq += 1
                     filename2 = stem_fmt.format(prefix, number, opts.digits, suffix, ext)
                     dst = os.path.join(opts.directory, filename2)
-                    if os.path.exists(dst):
-                        seq += 1
-                        continue
-                    else:
-                        unique = True
-                    if seq < opts.start:
-                        seq = number + 1
-                    else:
-                        seq = seq + 1
+                    if not os.path.exists(dst):
+                        break
         elif ext2:
             filename2 = stem + ext2
         #print((filename, filename2, m.groups() if m else None, seq, stem, renames))
