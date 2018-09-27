@@ -1,6 +1,8 @@
 #!/usr/bin/env python2
 """nimages"""
 import optparse, os, shutil, sys
+
+sys.path.insert(0, "/home/sluggo/local/lib/python2.7")
 from path import path
 
 OUTFILE = "zz.html"
@@ -8,7 +10,7 @@ OUTDIR = "x"
 pardir = path(os.pardir)
 
 def paths(days, is_min):
-    cmd = "find %s -%s -type f | egrep -v '\.(xvpics|html|txt)' | egrep -v '(messages|text|contact)' | sed 's/^\.\///' | sort"
+    cmd = "find %s -%s -type f | egrep -v '\.(xvpics|html|txt|xcf)' | egrep -v '(messages|text|contact)' | sed 's/^\.\///' | sort"
     tup = is_min and "-mmin" or "-mtime", days
     cmd = cmd % tup
     return os.popen(cmd)
