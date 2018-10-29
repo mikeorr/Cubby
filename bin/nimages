@@ -1,13 +1,13 @@
 #!/usr/bin/env python2
 """nimages"""
-import optparse, os, shutil, sys
-
-sys.path.insert(0, "/home/sluggo/local/lib/python2.7")
-from path import path
+import optparse
+import pathlib
+import shutil
+import sys
 
 OUTFILE = "zz.html"
 OUTDIR = "x"
-pardir = path(os.pardir)
+pardir = pathlib.Path("..")
 
 def paths(days, is_min):
     cmd = "find %s -%s -type f | egrep -v '\.(xvpics|html|txt|xcf)' | egrep -v '(messages|text|contact)' | sed 's/^\.\///' | sort"
@@ -45,8 +45,8 @@ def links(days, is_min):
         p = path(lin.rstrip())
         print p
         #newlink = outdir / p.basename()
-        linkto = pardir / p
-        base = p.namebase
+        linkto = join(pardir / p
+        base = p.stem
         while True:
             try:
                 newlink = outdir / (base + p.ext)
