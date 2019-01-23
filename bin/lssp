@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if ! [ $CONDA_PREFIX ] ;then
+    echo 1>&2 "error: no Conda environment active."
+    exit 1
+fi
+
+ls $CONDA_PREFIX/lib/python3.7/site-packages
