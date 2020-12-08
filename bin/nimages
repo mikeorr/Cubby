@@ -1,39 +1,23 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 """nimages"""
-import optparse
+
+import argparse
+import datetime
+import os
 import pathlib
+import pprint
 import shutil
 import sys
 
-OUTFILE = "zz.html"
 OUTDIR = "x"
-pardir = pathlib.Path("..")
+IGNORE_NAMES = ["w", OUTDIR]
+IGNORE_EXTS = [".html", ".txt", ".xcf"]
 
 def paths(days, is_min):
     cmd = "find %s -%s -type f | egrep -v '\.(xvpics|html|txt|xcf)' | egrep -v '(messages|text|contact)' | sed 's/^\.\///' | sort"
     tup = is_min and "-mmin" or "-mtime", days
     cmd = cmd % tup
     return os.popen(cmd)
-
-def empty_directory(dir):
-    if os.path.exists(dir):
-        for file in os.listdir(dir):
-            p = os.path.join(dir, file)
-            if os.path.isdir(p) and not os.path.islink(p):
-                shutil.rmtree(p)
-            else:
-                os.remove(p)
-    else:
-        os.mkdir(dir)
-
-def html(days, is_min):
-    out = file(OUTFILE, 'w')
-    f = paths(days, is_min)
-    for lin in f:
-        print >>out, '<IMG SRC="%s">' % lin.rstrip()
-    f.close()
-    out.close()
-    print "Placed output in", OUTFILE
 
 def links(days, is_min):
     empty_directory(OUTDIR)
@@ -43,31 +27,76 @@ def links(days, is_min):
     for lin in f:
         count += 1
         p = path(lin.rstrip())
-        print p
+        print(p)
         #newlink = outdir / p.basename()
-        linkto = join(pardir / p
-        base = p.stem
+        linkto = pardir / p
+        base = p.namebase
         while True:
             try:
                 newlink = outdir / (base + p.ext)
                 linkto.symlink(newlink)
                 break
-            except OSError, e:
+            except OSError as e:
                 if "File exists" in str(e):
                     base += "_"
-    print count, "images."
+    print(count, "images.")
+
+def get_cmdline_parser():
+    parser = argparse.ArgumentParser()
+    a = parser.add_argument
+    a("n", nargs="?", type=int, default=1, help="Days or minutes.")
+    a("--minutes", "-m", action="store_true", help="Use minutes.")
+    return parser
+
+def get_source_dirs(basedir):
+    ret = []
+    for name in os.listdir(basedir):
+        if name not in IGNORE_NAMES:
+            p = os.path.join(basedir, name)
+            if os.path.isdir(p):
+                ret.append(name)
+    ret.sort()
+    return ret
     
 def main():
-    parser = optparse.OptionParser()
-    pao = parser.add_option
-    pao("--html", action="store_true", dest="html")
-    pao("--min", "-m", action="store_true")
-    opts, args = parser.parse_args()
-    days = len(args) and args[0] or "1"
-    if opts.html:
-        html(days, opts.min)
+    parser = get_cmdline_parser()
+    opts = parser.parse_args()
+    now = datetime.datetime.now()
+    if opts.minutes:
+        delta = datetime.timedelta(minutes=opts.n)
     else:
-        links(days, opts.min)
+        delta = datetime.timedelta(days=opts.n)
+    cutoff_dt = now - delta
+    cutoff = cutoff_dt.timestamp()
+    parents = get_source_dirs(".")
+    if os.path.exists(OUTDIR):
+        shutil.rmtree(OUTDIR)
+    os.mkdir(OUTDIR)
+    count = 0
+    for parent in parents:
+        for dirpath, dirnames, filenames in os.walk(parent):
+            for filename in filenames:
+                filenames.sort()
+                name, ext = os.path.splitext(filename)
+                if ext.lower() in IGNORE_EXTS:
+                    continue
+                src = os.path.join(dirpath, filename)
+                if os.path.getmtime(src) >= cutoff:
+                    dst_name = name
+                    while True:
+                        dst = os.path.join(OUTDIR, dst_name + ext)
+                        if os.path.exists(dst):
+                            dst_name += "_"
+                        else:
+                            break
+                    target = os.path.join("..", src)
+                    count += 1
+                    #print(src, dst, target)
+                    print(src)
+                    os.symlink(target, dst)
+    print(count, "images.")
+    #import pprint
+    #pprint.pprint(locals())
         
 
 if __name__ == "__main__":
