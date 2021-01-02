@@ -26,7 +26,7 @@ def analyze_directory(d):
         elif prefix.startswith("tumblr_"):
             results["tumblr"] += 1
         else:
-            results[prefix] += 2
+            results[prefix] += 1
     return results
 
 def print_results(results):
