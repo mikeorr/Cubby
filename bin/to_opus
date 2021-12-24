@@ -1,0 +1,15 @@
+#!/bin/bash
+# Extract OPUS audio from a multimedia file.
+SRC="$1"
+DST="$2"
+if [ ! "$2" ] ;then
+    echo 2>&1 "Usage: $0 SOURCE DST"
+    exit 1
+fi
+if ! ffprobe "${SRC}" |& grep -q 'Audio: opus' ;then
+    echo 2>&1 "Warning: This does not appear to be an OPUS file."
+fi
+set -x
+ffmpeg -i "${SRC}" -vn -acodec copy "${DST}" >& /dev/null
+set +x
+echo Wrote "'${DST}'."
